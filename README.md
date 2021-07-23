@@ -1,7 +1,8 @@
-README.md# Project Title
+README.md
+# Project Title
 
 Rawpy - Radio Astronomy With Python
-A suite of command-line applications for perform oservations and post-process data
+A suite of command-line applications for performing radio telescope oservations and post-processing data.
 
 ## Description
 Rawpy consists of multiple command-line applications to perform both spectral and total power observations. Recorded data can be despiked, filtered, smoothed, and plotted.  Future versions will allow PDF resport output, and control of noise source calibration via USB relay.
@@ -16,6 +17,8 @@ The prorgam is still in early stages, but it is basically functional.  This READ
 * Numpy
 * pandas
 * PySerial
+* Simplesoapy
+* SoapySDR
 
 ### Installing
 TBD
