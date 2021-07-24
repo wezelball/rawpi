@@ -12,7 +12,7 @@ TODO:
 """
 
 # Imports
-import sys, select, os
+#import sys, select, os
 import simplesoapy
 import numpy as np
 import datetime
@@ -193,9 +193,6 @@ with open(file_name, mode='w') as csv_file:
       # Now there is a complex array full of samples.  Do some math on it to get
       # a single total power value.
 
-      # It would be nice to know the actual length of the array
-      #print(f'Sample buffer shape: {iq_sample_arr.shape}')
-
       # The below is a total power measurement equivalent to summing
       # P = V^2 / R = (sqrt(I^2 + Q^2))^2 = (I^2 + Q^2)
       # Multiplying a complex number by it's conjugate is equal to
@@ -213,6 +210,7 @@ with open(file_name, mode='w') as csv_file:
       i += 1
       
       """
+      TODO: This is broken - need to have 'press a key to quit' code
       # Press enter to terminate program
       print('Press <Enter> to terminate program')
       if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
