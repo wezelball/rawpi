@@ -31,17 +31,18 @@ class TimerClass(threading.Thread):
 
    def run(self):
       while not self.event.is_set():
-         dateSTR = datetime.datetime.now().strftime("%H:%M:%S" )
-         print(dateSTR)
+         dateSTR = get_time_now()
          self.event.wait(1)
 
          if calon == True:
             if dateSTR == calon_time:
                print('CAL ON')
+               relay.write(unhexlify(relay_onstr))
 
          if caloff == True:
             if dateSTR == caloff_time:
-               print('CAL OFF')            
+               print('CAL OFF')
+               relay.write(unhexlify(relay_offstr))
 
    def stop(self):
       self.event.set()
@@ -76,7 +77,8 @@ parser.add_argument('--calon',action="store",dest="calon",type=str,
                     default='',help='Calibration noise source ON time, in UTC (HH:MM:SS)')
 parser.add_argument('--caloff',action="store",dest="caloff",type=str,
                     default='',help='Calibration noise source OFF time, in UTC (HH:MM:SS)')
-
+parser.add_argument('--duration',action="store",dest="duration",type=int,
+                    default=43200,help='Duration of observation in seconds, default 43200 (12 hours)')
 # Parse the arguments
 
 parse_results = parser.parse_args()
@@ -88,6 +90,14 @@ freq = parse_results.freq
 sample_rate = parse_results.sample_rate
 calon_time = parse_results.calon
 caloff_time = parse_results.caloff
+duration = parse_results.duration
+
+# Make up some test parms
+#calon = True
+#caloff = True
+#calon_time = '02:15:00'
+#caloff_time = '02:30:00'
+#duration = 1800
 
 # Some sanity checks on command-line options
 if calon_time != '':
@@ -164,17 +174,14 @@ with open(file_name, mode='w') as csv_file:
 
    # Try taking a set of points
    #while True:
-   while i < 10:	    
+   while i < duration:	    
       # Setup base buffer and start receiving samples. Base buffer size is determined
       # by SoapySDR.Device.getStreamMTU(). If getStreamMTU() is not implemented by driver,
       # SoapyDevice.default_buffer_size is used instead
       sdr.start_stream()
 
-      # Create numpy array for received samples
-      #samples = numpy.empty(len(sdr.buffer) * 100, numpy.complex64)
-
       # Setting the buffer size as the number of samples per integration period, N 
-      print(f'SDR buffer length: {len(sdr.buffer)}')  
+      #print(f'SDR buffer length: {len(sdr.buffer)}')  
       iq_sample_arr = np.empty(N, np.complex64)
 
       # Receive all samples
@@ -187,7 +194,7 @@ with open(file_name, mode='w') as csv_file:
       # a single total power value.
 
       # It would be nice to know the actual length of the array
-      print(f'Sample buffer shape: {iq_sample_arr.shape}')
+      #print(f'Sample buffer shape: {iq_sample_arr.shape}')
 
       # The below is a total power measurement equivalent to summing
       # P = V^2 / R = (sqrt(I^2 + Q^2))^2 = (I^2 + Q^2)
@@ -204,10 +211,15 @@ with open(file_name, mode='w') as csv_file:
       csv_file.flush()
       print(f'Wrote record {i}\t{get_time_now()}\t{p_avg}')
       i += 1
-
+      
+      """
       # Press enter to terminate program
       print('Press <Enter> to terminate program')
       if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
          break
+     """
 
 csv_file.close()
+tmr.stop()
+if calon or caloff:
+    relay.close()

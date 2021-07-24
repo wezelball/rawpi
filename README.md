@@ -19,6 +19,7 @@ The prorgam is still in early stages, but it is basically functional.  This READ
 * PySerial
 * Simplesoapy
 * SoapySDR
+* pyudev
 
 ### Installing
 TBD
