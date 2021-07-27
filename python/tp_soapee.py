@@ -8,11 +8,11 @@ Created on Wed Jul  7 14:51:43 2021
 @author: dcohen
 
 TODO:
-    Use command-line parameters
+    Fix key capture
+    Add calibration markers
 """
 
 # Imports
-#import sys, select, os
 import simplesoapy
 import numpy as np
 import datetime
@@ -22,6 +22,9 @@ import threading
 import serial
 from binascii import unhexlify
 import find_port
+# For key capture
+import termios, fcntl, sys, os
+
 
 class TimerClass(threading.Thread):
    def __init__(self):
@@ -55,6 +58,18 @@ def get_day_now():
 def get_time_now():
    # Get the "now" time in UTC
    return datetime.datetime.utcnow().strftime('%H:%M:%S')
+
+# ************************* KEY CAPTURE *************************************
+fd = sys.stdin.fileno()
+
+oldterm = termios.tcgetattr(fd)
+newattr = termios.tcgetattr(fd)
+newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+termios.tcsetattr(fd, termios.TCSANOW, newattr)
+
+oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
+fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
+# ************************* KEY CAPTURE *************************************
 
 # Create the parser
 parser = argparse.ArgumentParser(description='Record total power to csv file')
@@ -173,51 +188,59 @@ with open(file_name, mode='w') as csv_file:
    csv_writer = csv.writer(csv_file, delimiter=',')
 
    # Try taking a set of points
-   #while True:
-   while i < duration:	    
-      # Setup base buffer and start receiving samples. Base buffer size is determined
-      # by SoapySDR.Device.getStreamMTU(). If getStreamMTU() is not implemented by driver,
-      # SoapyDevice.default_buffer_size is used instead
-      sdr.start_stream()
-
-      # Setting the buffer size as the number of samples per integration period, N 
-      #print(f'SDR buffer length: {len(sdr.buffer)}')  
-      iq_sample_arr = np.empty(N, np.complex64)
-
-      # Receive all samples
-      sdr.read_stream_into_buffer(iq_sample_arr)
-
-      # Stop receiving
-      sdr.stop_stream()
-
-      # Now there is a complex array full of samples.  Do some math on it to get
-      # a single total power value.
-
-      # The below is a total power measurement equivalent to summing
-      # P = V^2 / R = (sqrt(I^2 + Q^2))^2 = (I^2 + Q^2)
-      # Multiplying a complex number by it's conjugate is equal to
-      # the square of it's absolute value.
-      # (I + jQ) * (I - jQ) = sqrt(I^2 + Q^2)
-      p_tot = np.sum(np.real(iq_sample_arr * np.conj(iq_sample_arr)))    
-
-      # Compute the average power value based on the number of samples
-      p_avg = p_tot / N
-
-      # Write the power data to current row
-      csv_writer.writerow([get_day_now(), get_time_now(), p_avg])
-      csv_file.flush()
-      print(f'Wrote record {i}\t{get_time_now()}\t{p_avg}')
-      i += 1
+   try:
+      while i < duration:
+         try:
+            # Setup base buffer and start receiving samples. Base buffer size is determined
+            # by SoapySDR.Device.getStreamMTU(). If getStreamMTU() is not implemented by driver,
+            # SoapyDevice.default_buffer_size is used instead
+            sdr.start_stream()
       
-      """
-      TODO: This is broken - need to have 'press a key to quit' code
-      # Press enter to terminate program
-      print('Press <Enter> to terminate program')
-      if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-         break
-     """
-
-csv_file.close()
-tmr.stop()
-if calon or caloff:
-    relay.close()
+            # Setting the buffer size as the number of samples per integration period, N 
+            #print(f'SDR buffer length: {len(sdr.buffer)}')  
+            iq_sample_arr = np.empty(N, np.complex64)
+      
+            # Receive all samples
+            sdr.read_stream_into_buffer(iq_sample_arr)
+      
+            # Stop receiving
+            sdr.stop_stream()
+      
+            # Now there is a complex array full of samples.  Do some math on it to get
+            # a single total power value.
+      
+            # The below is a total power measurement equivalent to summing
+            # P = V^2 / R = (sqrt(I^2 + Q^2))^2 = (I^2 + Q^2)
+            # Multiplying a complex number by it's conjugate is equal to
+            # the square of it's absolute value.
+            # (I + jQ) * (I - jQ) = sqrt(I^2 + Q^2)
+            p_tot = np.sum(np.real(iq_sample_arr * np.conj(iq_sample_arr)))    
+      
+            # Compute the average power value based on the number of samples
+            p_avg = p_tot / N
+      
+            # Write the power data to current row
+            csv_writer.writerow([get_day_now(), get_time_now(), p_avg])
+            csv_file.flush()
+            print(f'Wrote record {i}\t{get_time_now()}\t{p_avg}')
+            i += 1
+            
+            # See if a key has been pressed
+            c = sys.stdin.read(1)
+            if c:
+               print("Got character", repr(c))
+               # Checking for the escape key, but also for 
+               # certain other keys (like the arrows)
+               # could do 'q' or 'Q' to quit
+               if c == 'q' or c == 'Q':
+                  break
+         except IOError: pass
+          
+   finally:
+      termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
+      fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
+  
+      csv_file.close()
+      tmr.stop()
+      if calon or caloff:
+         relay.close()
