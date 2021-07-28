@@ -8,6 +8,17 @@ Created on Fri Jul  9 07:21:39 2021
 @author: dcohen
 
 TODO:
+
+Known Bugs:
+Serious - if the time wraps around from 23 hours to 00 UTC, the plot
+gets flipped on x-axis, and some other weird stuff happens.
+
+Smoothing a plot can cause exceptioon because the size of the smooth versus
+raw arrays differs by one element.  This was noticed when trying to plot an
+overlay or smooth versus raw data.
+
+Plot markers where calibrator changes state
+    
 Need a straight line fit for baseline correction    
 """
 

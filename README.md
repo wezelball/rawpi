@@ -20,6 +20,7 @@ The prorgam is still in early stages, but it is basically functional.  This READ
 * Simplesoapy
 * SoapySDR
 * pyudev
+* scipy
 
 ### Installing
 TBD
