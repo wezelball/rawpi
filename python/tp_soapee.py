@@ -8,8 +8,8 @@ Created on Wed Jul  7 14:51:43 2021
 @author: dcohen
 
 TODO:
-    Fix key capture
-    Add calibration markers
+    Fix key capture - DONE
+    Add calibration markers - IN PROGRESS
 """
 
 # Imports
@@ -30,7 +30,7 @@ class TimerClass(threading.Thread):
    def __init__(self):
       threading.Thread.__init__(self)
       self.event = threading.Event()
-      #self.count = 10
+      global calstate
 
    def run(self):
       while not self.event.is_set():
@@ -41,11 +41,13 @@ class TimerClass(threading.Thread):
             if dateSTR == calon_time:
                print('CAL ON')
                relay.write(unhexlify(relay_onstr))
+               calstate = 'ON'
 
          if caloff == True:
             if dateSTR == caloff_time:
                print('CAL OFF')
                relay.write(unhexlify(relay_offstr))
+               calstate = 'OFF'
 
    def stop(self):
       self.event.set()
@@ -114,7 +116,7 @@ duration = parse_results.duration
 #caloff_time = '02:30:00'
 #duration = 1800
 
-# Some sanity checks on command-line options
+# Set up calibration logic
 if calon_time != '':
    calon = True
 else:
@@ -125,7 +127,9 @@ if caloff_time != '':
 else:
    caloff = False
 
-# Need cal times checking
+calstate = 'OFF'
+
+# Need cal times sanity checking
 
 # Handle the calibration relay
 if calon or caloff:
@@ -134,8 +138,8 @@ if calon or caloff:
    vendor = usb_devices[0][0]
    usb_port = usb_devices[0][3]
 
-   print(vendor)
-   print(usb_port)
+   print(f'USB device vendor: {vendor}')
+   print(f'USB port: {usb_port}')
 
    # Open the serial port
    if vendor == '1a86':    # look for the little relay
@@ -220,7 +224,7 @@ with open(file_name, mode='w') as csv_file:
             p_avg = p_tot / N
       
             # Write the power data to current row
-            csv_writer.writerow([get_day_now(), get_time_now(), p_avg])
+            csv_writer.writerow([get_day_now(), get_time_now(), p_avg, calstate])
             csv_file.flush()
             print(f'Wrote record {i}\t{get_time_now()}\t{p_avg}')
             i += 1
