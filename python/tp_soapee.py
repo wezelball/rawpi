@@ -30,9 +30,9 @@ class TimerClass(threading.Thread):
    def __init__(self):
       threading.Thread.__init__(self)
       self.event = threading.Event()
-      global calstate
 
    def run(self):
+      global calstate
       while not self.event.is_set():
          dateSTR = get_time_now()
          self.event.wait(1)
