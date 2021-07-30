@@ -113,6 +113,27 @@ else:
     tp_array = df[2].to_numpy()[startoff:-endoff]
     time_array = df[1].to_numpy()[startoff:-endoff]
 
+# Was a calibration done?
+cal_on_transition = -1
+cal_off_transition = -1
+calibrating = False
+try:
+    cal_series = df[3].str.find('ON')
+    # just a test
+    for i,j in enumerate(cal_series):
+        if cal_on_transition < 0 and j == 0:
+            cal_on_transition = i
+            calibrating = True
+            print(f'Found cal on at sample: {cal_on_transition}')
+        if cal_off_transition < 0 and calibrating and j == -1:
+            cal_off_transition = i
+            print(f'Found cal off at sample: {cal_off_transition}')
+
+    
+# Older files wont have the calibration field
+except KeyError:
+    pass
+
 # What is the axis label?
 axis_label = 'Raw '
 
@@ -135,14 +156,6 @@ if use_lowpass:
     tp_array = u.butter_lowpass_filter(tp_array,0.5, 2, 90)
     axis_label += ' lowpass filtered'
     print('Using lowpass filter')
-
-"""
-# Let's see if a linear regression works for determining a baseline
-samples = np.arange(0, tp_array.size, 1)
-baseline = np.polyfit(samples,tp_array,1)
-baseline_poly = np.poly1d(baseline)
-print(baseline_poly)
-"""
 
 # Plot total power versus time
 # my pandas dun tole me, to do da next line, baby yeahhh...
