@@ -17,7 +17,8 @@ Smoothing a plot can cause exceptioon because the size of the smooth versus
 raw arrays differs by one element.  This was noticed when trying to plot an
 overlay or smooth versus raw data.
 
-Plot markers where calibrator changes state
+Plot markers where calibrator changes state - this is working, but needs
+emor testing.
     
 Need a straight line fit for baseline correction    
 """
@@ -99,40 +100,61 @@ except FileNotFoundError:
     sys.exit()
     
     
-# The first column 0, the date, is not currently used in the plot. Pick
-# columns 1 and 2 and create a dataframe
-tp_df = df[[1,2]]
+# The first column 0, the date, is not currently used in the plot.
+# That will change later.
+
+# Create the total power and time arrays from the pandas daatframe
+tp_array = df[2].to_numpy()
+time_array = df[1].to_numpy()
 
 # I need to get the columns of the dataframe into a series, then convert to
 # numpy array, then slice based on start and end offsets
 # All of that is done in one line of code!
+# These series are "windows" into the main arrays which will be 
+# mapped to a plot 
 if endoff == 0:
-    tp_array = df[2].to_numpy()[startoff:]
-    time_array = df[1].to_numpy()[startoff:]
+    tp_array_window = df[2].to_numpy()[startoff:]
+    time_array_window = df[1].to_numpy()[startoff:]
 else:
-    tp_array = df[2].to_numpy()[startoff:-endoff]
-    time_array = df[1].to_numpy()[startoff:-endoff]
+    tp_array_window = df[2].to_numpy()[startoff:-endoff]
+    time_array_window = df[1].to_numpy()[startoff:-endoff]
 
-# Was a calibration done?
+# Set up calibration variables
 cal_on_transition = -1
 cal_off_transition = -1
 calibrating = False
+
+# Was a calibration done?
 try:
     cal_series = df[3].str.find('ON')
     # just a test
     for i,j in enumerate(cal_series):
         if cal_on_transition < 0 and j == 0:
+            # Have to shift by the starting offset
             cal_on_transition = i
+            cal_on_position = i - startoff
             calibrating = True
             print(f'Found cal on at sample: {cal_on_transition}')
         if cal_off_transition < 0 and calibrating and j == -1:
+            # Have to shift by the starting offset
             cal_off_transition = i
+            cal_off_position = i - startoff
             print(f'Found cal off at sample: {cal_off_transition}')
-
-    
+               
 # Older files wont have the calibration field
 except KeyError:
     pass
+
+# Need to get time values associated with calibration samples
+# The astype('datetime64[ns]') is needed to force the value to 
+# datetime64[ns] as opposed to datetime64, to match units with 
+# the array
+if calibrating:
+    cal_time_on = time_array[cal_on_transition].astype('datetime64[ns]')
+    cal_time_off = time_array[cal_off_transition].astype('datetime64[ns]')
+    
+    print(f'cal time on: {cal_time_on}')
+    print(f'cal time off: {cal_time_off}')
 
 # What is the axis label?
 axis_label = 'Raw '
@@ -168,17 +190,24 @@ ax.xaxis.set_major_formatter(mdates.DateFormatter("%H-%M"))
 # Plotting the raw axis then the processed axis makes the graph 
 # a lot more readable
 if plot_overlay:
-    ax.plot(time_array,raw_array,color='red' )
-ax.plot(time_array, tp_array,label=axis_label, color='black')
+    ax.plot(time_array_window,raw_array,color='red' )
+ax.plot(time_array_window, tp_array_window,label=axis_label, color='black')
 ax.legend(loc=(0.05,0.8)) # use a location code
 
+# Plot the calibration on/off lines
+if calibrating and cal_on_transition != -1 and cal_on_position >= 0:
+    plt.axvline(x=cal_time_on)
+# TODO: validate the math below, looks like it works
+if calibrating and cal_off_transition != -1  and cal_off_position <= (len(df) - startoff - endoff):
+    plt.axvline(x=cal_time_off, color = 'red')
+
 print('PLOT STATISTICS')
-print(f'Total number of points: {tp_df.size}')
-print(f'Number of points in window: {tp_df.size - startoff - endoff}')
+print(f'Total number of points: {len(df)}')
+print(f'Number of points in window: {len(df) - startoff - endoff}')
 print(f'Array size: {tp_array.size}')
 print(f'Start offset: {startoff}')
 print(f'End offset: {endoff}')
-print(f'Window minimum: {np.amin(tp_array)}')
-print(f'Window maximum: {np.amax(tp_array)}')
-print(f'Window average: {np.mean(tp_array)}')
-print(f'Window stddev: {np.std(tp_array)}')
+print(f'Window minimum: {np.amin(tp_array_window)}')
+print(f'Window maximum: {np.amax(tp_array_window)}')
+print(f'Window average: {np.mean(tp_array_window)}')
+print(f'Window stddev: {np.std(tp_array_window)}')
