@@ -10,19 +10,27 @@ Created on Fri Jul  9 07:21:39 2021
 TODO:
 
 Known Bugs:
+
+Serious - By defining a windows tp_array_window and time_array_window,
+I fixed some problems with calibration markers, but I created a new problem-
+any operation on the array (smoothing, lowpass, etc) doesn't appear to
+affect window.  Maybe if I defined the windows after any post-processing,
+but before any plotting.
+
 Serious - if the time wraps around from 23 hours to 00 UTC, the plot
 gets flipped on x-axis, and some other weird stuff happens.
 
 THIS BUG HAS BEEN FIXED IN THEORY, BUT ADDT'L TESTING IS NEEDED
 
-Smoothing a plot can cause exceptioon because the size of the smooth versus
+Smoothing a plot can cause exception because the size of the smooth versus
 raw arrays differs by one element.  This was noticed when trying to plot an
 overlay or smooth versus raw data.
-
 
 When running from spyder, x and y axis values show.  When running from the
 command-line, they don't show.  I think this has to to with the Matplotlib
 backend module, which differs between spyder and the command line
+
+FIXED - DEFINED ax AS A SUBPLOT 
 
 Plot markers where calibrator changes state - this is working, but needs
 more testing.
@@ -35,8 +43,8 @@ import sys
 import pandas as pd
 import numpy as np
 # my pandas dun tole me, to do da next line, baby yeahhh...
-from pandas.plotting import register_matplotlib_converters
-import matplotlib
+#from pandas.plotting import register_matplotlib_converters
+#import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 import argparse
@@ -89,7 +97,7 @@ smooth_winsize = parse_results.smooth
 
 # Check for broken command-line options
 if startoff < 0 or endoff < 0:
-    print(f'Offsets must be positive integers')
+    print('Offsets must be positive integers')
     sys.exit()
 
 if smooth_winsize > 0:
@@ -113,9 +121,14 @@ except FileNotFoundError:
 raw_time_series = df[0] + ' ' + df[1]
 raw_time_series = pd.to_datetime(raw_time_series)
 
-# Create the total power and time arrays from the pandas datframe
+# Create the total power and time arrays from the pandas dataframe
 tp_array = df[2].to_numpy()
 time_array = raw_time_series.to_numpy()
+
+
+# TODO: THIS BLOCK OF CODE NEEDS TO MOVED AND tp_array_window REDEFINED
+# IN TERMS OF # tp_array INSTEAD OF df[2], AS THIS ARRAY HAS BEEN
+# MODIFIED BY WHATEVER POST-PROCESSING WAS DONE
 
 # I need to get the columns of the dataframe into a series, then convert to
 # numpy array, then slice based on start and end offsets
@@ -129,7 +142,8 @@ if endoff == 0:
 else:
     tp_array_window = df[2].to_numpy()[startoff:-endoff]
     time_array_window = time_array[startoff:-endoff]
-    
+
+# TODO: END OF BLOCK OF CODE
 
 # Set up calibration variables
 cal_on_transition = -1
@@ -159,8 +173,6 @@ except KeyError:
 
 # Need to get time values associated with calibration samples
 if calibrating:
-    #cal_time_on = time_array[cal_on_transition].astype('datetime64[ns]')
-    #cal_time_off = time_array[cal_off_transition].astype('datetime64[ns]')
     cal_time_on = time_array[cal_on_transition]
     cal_time_off = time_array[cal_off_transition]
     
@@ -190,12 +202,19 @@ if use_lowpass:
     axis_label += ' lowpass filtered'
     print('Using lowpass filter')
 
-# Plot total power versus time
-# my pandas dun tole me, to do da next line, baby yeahhh...
-register_matplotlib_converters()
+
+
+
+
+
+
 
 fig = plt.figure(figsize=(10,5))
-ax=fig.add_axes([0,0,1,1],title = f"Total Power Plot, {file_name}")
+# By setting ax as a subplot, the x and y values are now displayed
+# when running from the shell
+#ax=fig.add_axes([0,0,1,1],title = f"Total Power Plot, {file_name}")
+ax = fig.add_subplot(1, 1, 1)
+ax.set_title(f"Total Power Plot, {file_name}")
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%H-%M"))
 # It actually makes a difference which axis gets plotted first
 # Plotting the raw axis then the processed axis makes the graph 
@@ -213,11 +232,9 @@ if calibrating and cal_on_transition != -1 and cal_on_position >= 0:
 if calibrating and cal_off_transition != -1  and cal_off_position <= (len(df) - startoff - endoff):
     plt.axvline(x=cal_time_off, color = 'red')
 
-
 plt.show()
 
 print('PLOT STATISTICS')
-print(f'Matplotlib backend: {matplotlib.get_backend()}')
 print(f'Total number of points: {len(df)}')
 print(f'Number of points in window: {len(df) - startoff - endoff}')
 print(f'Array size: {tp_array.size}')
