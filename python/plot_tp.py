@@ -13,12 +13,19 @@ Known Bugs:
 Serious - if the time wraps around from 23 hours to 00 UTC, the plot
 gets flipped on x-axis, and some other weird stuff happens.
 
+THIS BUG HAS BEEN FIXED IN THEORY, BUT ADDT'L TESTING IS NEEDED
+
 Smoothing a plot can cause exceptioon because the size of the smooth versus
 raw arrays differs by one element.  This was noticed when trying to plot an
 overlay or smooth versus raw data.
 
+
+When running from spyder, x and y axis values show.  When running from the
+command-line, they don't show.  I think this has to to with the Matplotlib
+backend module, which differs between spyder and the command line
+
 Plot markers where calibrator changes state - this is working, but needs
-emor testing.
+more testing.
     
 Need a straight line fit for baseline correction    
 """
@@ -29,6 +36,7 @@ import pandas as pd
 import numpy as np
 # my pandas dun tole me, to do da next line, baby yeahhh...
 from pandas.plotting import register_matplotlib_converters
+import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 import argparse
@@ -78,8 +86,6 @@ plot_overlay = parse_results.plot_overlay
 smooth_winsize = parse_results.smooth
 #use_correct = parse_results.use_correct
 
-# useful arguments
-# --start 200 --despike --smooth 200
 
 # Check for broken command-line options
 if startoff < 0 or endoff < 0:
@@ -93,19 +99,23 @@ else:
 
 # Load the file
 try:
-    # Read column 1 as dates
-    df = pd.read_csv(file_name,header=None, parse_dates=[1])
+    # Read column 1 NOT as dates
+    #df = pd.read_csv(file_name,header=None, parse_dates=[1])
+    df = pd.read_csv(file_name,header=None)
 except FileNotFoundError:
     print('Please specify a valid path filename with --filename.')
     sys.exit()
     
-    
-# The first column 0, the date, is not currently used in the plot.
-# That will change later.
+# These are the new changes to get the proper datetime64[ns] values that 
+# matplotlib needs.
+# Combine the date and time column to a series which is date plus time,
+# raw_time_series, and convert to datetime64[ns]
+raw_time_series = df[0] + ' ' + df[1]
+raw_time_series = pd.to_datetime(raw_time_series)
 
-# Create the total power and time arrays from the pandas daatframe
+# Create the total power and time arrays from the pandas datframe
 tp_array = df[2].to_numpy()
-time_array = df[1].to_numpy()
+time_array = raw_time_series.to_numpy()
 
 # I need to get the columns of the dataframe into a series, then convert to
 # numpy array, then slice based on start and end offsets
@@ -114,10 +124,12 @@ time_array = df[1].to_numpy()
 # mapped to a plot 
 if endoff == 0:
     tp_array_window = df[2].to_numpy()[startoff:]
-    time_array_window = df[1].to_numpy()[startoff:]
+    time_array_window = time_array[startoff:]
+    
 else:
     tp_array_window = df[2].to_numpy()[startoff:-endoff]
-    time_array_window = df[1].to_numpy()[startoff:-endoff]
+    time_array_window = time_array[startoff:-endoff]
+    
 
 # Set up calibration variables
 cal_on_transition = -1
@@ -146,12 +158,11 @@ except KeyError:
     pass
 
 # Need to get time values associated with calibration samples
-# The astype('datetime64[ns]') is needed to force the value to 
-# datetime64[ns] as opposed to datetime64, to match units with 
-# the array
 if calibrating:
-    cal_time_on = time_array[cal_on_transition].astype('datetime64[ns]')
-    cal_time_off = time_array[cal_off_transition].astype('datetime64[ns]')
+    #cal_time_on = time_array[cal_on_transition].astype('datetime64[ns]')
+    #cal_time_off = time_array[cal_off_transition].astype('datetime64[ns]')
+    cal_time_on = time_array[cal_on_transition]
+    cal_time_off = time_array[cal_off_transition]
     
     print(f'cal time on: {cal_time_on}')
     print(f'cal time off: {cal_time_off}')
@@ -194,6 +205,7 @@ if plot_overlay:
 ax.plot(time_array_window, tp_array_window,label=axis_label, color='black')
 ax.legend(loc=(0.05,0.8)) # use a location code
 
+
 # Plot the calibration on/off lines
 if calibrating and cal_on_transition != -1 and cal_on_position >= 0:
     plt.axvline(x=cal_time_on)
@@ -201,7 +213,11 @@ if calibrating and cal_on_transition != -1 and cal_on_position >= 0:
 if calibrating and cal_off_transition != -1  and cal_off_position <= (len(df) - startoff - endoff):
     plt.axvline(x=cal_time_off, color = 'red')
 
+
+plt.show()
+
 print('PLOT STATISTICS')
+print(f'Matplotlib backend: {matplotlib.get_backend()}')
 print(f'Total number of points: {len(df)}')
 print(f'Number of points in window: {len(df) - startoff - endoff}')
 print(f'Array size: {tp_array.size}')
