@@ -11,7 +11,7 @@ TODO:
 
 Known Bugs:
 
-Serious - By defining a windows tp_array_window and time_array_window,
+Moderate - By defining a windows tp_array_window and time_array_window,
 I fixed some problems with calibration markers, but I created a new problem-
 any operation on the array (smoothing, lowpass, etc) doesn't appear to
 affect window.  Maybe if I defined the windows after any post-processing,
@@ -20,7 +20,7 @@ but before any plotting.
 Serious - if the time wraps around from 23 hours to 00 UTC, the plot
 gets flipped on x-axis, and some other weird stuff happens.
 
-THIS BUG HAS BEEN FIXED IN THEORY, BUT ADDT'L TESTING IS NEEDED
+FIXED - VERIFIED BY TEST - OOOOOOOOOOAAAAAAAAAAAAAAAAHHHHHHHHHHH!!
 
 Smoothing a plot can cause exception because the size of the smooth versus
 raw arrays differs by one element.  This was noticed when trying to plot an
