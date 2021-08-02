@@ -17,24 +17,12 @@ any operation on the array (smoothing, lowpass, etc) doesn't appear to
 affect window.  Maybe if I defined the windows after any post-processing,
 but before any plotting.
 
-Serious - if the time wraps around from 23 hours to 00 UTC, the plot
-gets flipped on x-axis, and some other weird stuff happens.
-
-FIXED - VERIFIED BY TEST - OOOOOOOOOOAAAAAAAAAAAAAAAAHHHHHHHHHHH!!
+FIXED - aayyyyeeeeeeeee!!
 
 Smoothing a plot can cause exception because the size of the smooth versus
 raw arrays differs by one element.  This was noticed when trying to plot an
 overlay or smooth versus raw data.
-
-When running from spyder, x and y axis values show.  When running from the
-command-line, they don't show.  I think this has to to with the Matplotlib
-backend module, which differs between spyder and the command line
-
-FIXED - DEFINED ax AS A SUBPLOT 
-
-Plot markers where calibrator changes state - this is working, but needs
-more testing.
-    
+ 
 Need a straight line fit for baseline correction    
 """
 
@@ -126,25 +114,6 @@ tp_array = df[2].to_numpy()
 time_array = raw_time_series.to_numpy()
 
 
-# TODO: THIS BLOCK OF CODE NEEDS TO MOVED AND tp_array_window REDEFINED
-# IN TERMS OF # tp_array INSTEAD OF df[2], AS THIS ARRAY HAS BEEN
-# MODIFIED BY WHATEVER POST-PROCESSING WAS DONE
-
-# I need to get the columns of the dataframe into a series, then convert to
-# numpy array, then slice based on start and end offsets
-# All of that is done in one line of code!
-# These series are "windows" into the main arrays which will be 
-# mapped to a plot 
-if endoff == 0:
-    tp_array_window = df[2].to_numpy()[startoff:]
-    time_array_window = time_array[startoff:]
-    
-else:
-    tp_array_window = df[2].to_numpy()[startoff:-endoff]
-    time_array_window = time_array[startoff:-endoff]
-
-# TODO: END OF BLOCK OF CODE
-
 # Set up calibration variables
 cal_on_transition = -1
 cal_off_transition = -1
@@ -202,12 +171,17 @@ if use_lowpass:
     axis_label += ' lowpass filtered'
     print('Using lowpass filter')
 
-
-
-
-
-
-
+# I need to get the columns of the dataframe into a series, then convert to
+# numpy array, then slice based on start and end offsets
+# All of that is done in one line of code!
+# These series are "windows" into the main arrays which will be 
+# mapped to a plot 
+if endoff == 0:
+    tp_array_window = tp_array[startoff:]
+    time_array_window = time_array[startoff:] 
+else:
+    tp_array_window = tp_array[startoff:-endoff]
+    time_array_window = time_array[startoff:-endoff]
 
 fig = plt.figure(figsize=(10,5))
 # By setting ax as a subplot, the x and y values are now displayed
@@ -223,7 +197,6 @@ if plot_overlay:
     ax.plot(time_array_window,raw_array,color='red' )
 ax.plot(time_array_window, tp_array_window,label=axis_label, color='black')
 ax.legend(loc=(0.05,0.8)) # use a location code
-
 
 # Plot the calibration on/off lines
 if calibrating and cal_on_transition != -1 and cal_on_position >= 0:
