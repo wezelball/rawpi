@@ -9,21 +9,19 @@ Created on Fri Jul  9 07:21:39 2021
 
 TODO:
 
+Working on temperature compensation.  Font is too large when plotting
+temperature
+
+Need a straight line fit for baseline correction    
+
 Known Bugs:
-
-Moderate - By defining a windows tp_array_window and time_array_window,
-I fixed some problems with calibration markers, but I created a new problem-
-any operation on the array (smoothing, lowpass, etc) doesn't appear to
-affect window.  Maybe if I defined the windows after any post-processing,
-but before any plotting.
-
-FIXED - aayyyyeeeeeeeee!!
 
 Smoothing a plot can cause exception because the size of the smooth versus
 raw arrays differs by one element.  This was noticed when trying to plot an
 overlay or smooth versus raw data.
+
+UNABLE TO REPRODUCE AGAIN
  
-Need a straight line fit for baseline correction    
 """
 
 # Imports
@@ -61,7 +59,9 @@ parser.add_argument('--despike', dest='use_despike', action='store_true',
 parser.add_argument('--lowpass', dest='use_lowpass', action='store_true', 
                     help='Use lowpass filter on raw data')
 parser.add_argument('--overlay', dest='plot_overlay', action='store_true', 
-                    help='Graph processed graph over raw data')
+                    help='Graph processed data over raw data')
+parser.add_argument('--temp', dest='plot_temperature', action='store_true', 
+                    help='Graph ambient temperature')
 
 """
 TODO - figure this out
@@ -81,7 +81,7 @@ plot_overlay = parse_results.plot_overlay
 # A windowsize of 200 seems to work well
 smooth_winsize = parse_results.smooth
 #use_correct = parse_results.use_correct
-
+plot_temperature = parse_results.plot_temperature
 
 # Check for broken command-line options
 if startoff < 0 or endoff < 0:
@@ -112,7 +112,7 @@ raw_time_series = pd.to_datetime(raw_time_series)
 # Create the total power and time arrays from the pandas dataframe
 tp_array = df[2].to_numpy()
 time_array = raw_time_series.to_numpy()
-
+temperature_array = df[4].to_numpy()
 
 # Set up calibration variables
 cal_on_transition = -1
@@ -186,8 +186,13 @@ else:
 fig = plt.figure(figsize=(10,5))
 # By setting ax as a subplot, the x and y values are now displayed
 # when running from the shell
-#ax=fig.add_axes([0,0,1,1],title = f"Total Power Plot, {file_name}")
-ax = fig.add_subplot(1, 1, 1)
+
+if plot_temperature:
+    fig, (ax, ax2) = plt.subplots(2, sharex=True)
+    #ax = fig.add_subplot(2, 1, 1)
+else:
+    ax = fig.add_subplot(1, 1, 1)
+    
 ax.set_title(f"Total Power Plot, {file_name}")
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%H-%M"))
 # It actually makes a difference which axis gets plotted first
@@ -200,10 +205,14 @@ ax.legend(loc=(0.05,0.8)) # use a location code
 
 # Plot the calibration on/off lines
 if calibrating and cal_on_transition != -1 and cal_on_position >= 0:
-    plt.axvline(x=cal_time_on)
+    ax.axvline(x=cal_time_on)
 # TODO: validate the math below, looks like it works
 if calibrating and cal_off_transition != -1  and cal_off_position <= (len(df) - startoff - endoff):
-    plt.axvline(x=cal_time_off, color = 'red')
+    ax.axvline(x=cal_time_off, color = 'red')
+
+if plot_temperature:
+    ax2.set_title("Ambient Temperaturee, degrees C")
+    ax2.plot(time_array_window, temperature_array)
 
 plt.show()
 
