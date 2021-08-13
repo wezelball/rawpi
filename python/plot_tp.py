@@ -10,7 +10,10 @@ Created on Fri Jul  9 07:21:39 2021
 TODO:
 
 Working on temperature compensation.  Font is too large when plotting
-temperature
+temperature.
+FIXED
+
+Temperature plot looking nice, need to calculate temperature response
 
 Need a straight line fit for baseline correction    
 
@@ -183,17 +186,17 @@ else:
     tp_array_window = tp_array[startoff:-endoff]
     time_array_window = time_array[startoff:-endoff]
 
-fig = plt.figure(figsize=(10,5))
 # By setting ax as a subplot, the x and y values are now displayed
 # when running from the shell
-
 if plot_temperature:
-    fig, (ax, ax2) = plt.subplots(2, sharex=True)
-    #ax = fig.add_subplot(2, 1, 1)
+    # The gridspec allows the 1st subplot to be larger by the ratio
+    fig, (ax, ax2) = plt.subplots(2, sharex=True, figsize=(10,5), \
+                                  gridspec_kw={'height_ratios': [3,1]})
 else:
+    fig = plt.figure(figsize=(10,5))
     ax = fig.add_subplot(1, 1, 1)
     
-ax.set_title(f"Total Power Plot, {file_name}")
+ax.set_title(f"Total Power Plot, {file_name}", fontsize = 10)
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%H-%M"))
 # It actually makes a difference which axis gets plotted first
 # Plotting the raw axis then the processed axis makes the graph 
@@ -211,8 +214,11 @@ if calibrating and cal_off_transition != -1  and cal_off_position <= (len(df) - 
     ax.axvline(x=cal_time_off, color = 'red')
 
 if plot_temperature:
-    ax2.set_title("Ambient Temperaturee, degrees C")
+    ax2.set_title("Ambient Temperaturee, degrees C", fontsize=10)
     ax2.plot(time_array_window, temperature_array)
+
+# No wasted space
+fig.tight_layout()
 
 plt.show()
 
