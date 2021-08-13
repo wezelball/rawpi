@@ -48,7 +48,7 @@ class TimerClass(threading.Thread):
                print('CAL OFF')
                relay.write(unhexlify(relay_offstr))
                calstate = 'OFF'
-
+               
    def stop(self):
       self.event.set()
 
@@ -64,6 +64,7 @@ def get_time_now():
 # ************************* KEY CAPTURE *************************************
 fd = sys.stdin.fileno()
 
+# This will fail if running in Spyder, must run from shell
 oldterm = termios.tcgetattr(fd)
 newattr = termios.tcgetattr(fd)
 newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
@@ -96,6 +97,11 @@ parser.add_argument('--caloff',action="store",dest="caloff",type=str,
                     default='',help='Calibration noise source OFF time, in UTC (HH:MM:SS)')
 parser.add_argument('--duration',action="store",dest="duration",type=int,
                     default=43200,help='Duration of observation in seconds, default 43200 (12 hours)')
+# For these arguments, just calling them without an argument sets them 
+# to True. Sweet!
+parser.add_argument('--temp', dest='record_temperature', action='store_true', 
+                    help='Record ambient temperature')
+
 # Parse the arguments
 
 parse_results = parser.parse_args()
@@ -108,6 +114,7 @@ sample_rate = parse_results.sample_rate
 calon_time = parse_results.calon
 caloff_time = parse_results.caloff
 duration = parse_results.duration
+recording_temperature = parse_results.record_temperature
 
 # Make up some test parms
 #calon = True
@@ -131,23 +138,37 @@ calstate = 'OFF'
 
 # Need cal times sanity checking
 
-# Handle the calibration relay
-if calon or caloff:
+# Handle the USB devices
+if calon or caloff or recording_temperature:
    # Detect USB devices, get the port of the serial relay if it exists
    usb_devices = find_port.list_devices()
-   vendor = usb_devices[0][0]
-   usb_port = usb_devices[0][3]
-
-   print(f'USB device vendor: {vendor}')
-   print(f'USB port: {usb_port}')
-
-   # Open the serial port
-   if vendor == '1a86':    # look for the little relay
-      relay = serial.Serial()
-      relay.port=usb_port
-      relay.baudrate=9600
-      relay.open()
-
+   
+   if calon or caloff:
+       vendor_id = '1a86'
+       try:
+           usb_device = find_port.list_devices(vid=vendor_id)           
+           usb_port = usb_device[0][3]
+           relay = serial.Serial()
+           relay.port=usb_port
+           relay.baudrate=9600
+           relay.open()
+           print('Calibrator relay found')
+       except:
+            sys.exit('No calibrator relay found')
+            
+   if recording_temperature:
+        vendor_id = '0403'
+        try:
+           usb_device = find_port.list_devices(vid=vendor_id)           
+           usb_port = usb_device[0][3]
+           nano = serial.Serial()
+           nano.port=usb_port
+           nano.baudrate=57600 # slow this down
+           nano.open()
+           print('Arduino found')
+        except:
+            sys.exit('No Arduino found')
+   
    # Relay ON/OFF commands
    relay_onstr = "A00101A2"
    relay_offstr = "A00100A1"
@@ -195,6 +216,9 @@ with open(file_name, mode='w') as csv_file:
    try:
       while i < duration:
          try:
+            # Write to the Arduino, requesting a temperature 
+            nano.write(b't')    # the b encodes to byte, not unicode (Python default string)
+			
             # Setup base buffer and start receiving samples. Base buffer size is determined
             # by SoapySDR.Device.getStreamMTU(). If getStreamMTU() is not implemented by driver,
             # SoapyDevice.default_buffer_size is used instead
@@ -222,9 +246,14 @@ with open(file_name, mode='w') as csv_file:
       
             # Compute the average power value based on the number of samples
             p_avg = p_tot / N
+
+	    # Try to get temperature from Arduino, should be enough time
+            temperature = -99.0		# if no temperature data, record something
+            if nano.inWaiting()>0:
+               temperature = float(nano.read(nano.inWaiting()))
       
             # Write the power data to current row
-            csv_writer.writerow([get_day_now(), get_time_now(), p_avg, calstate])
+            csv_writer.writerow([get_day_now(), get_time_now(), p_avg, calstate, temperature])
             csv_file.flush()
             print(f'Wrote record {i}\t{get_time_now()}\t{p_avg}')
             i += 1
@@ -248,3 +277,5 @@ with open(file_name, mode='w') as csv_file:
       tmr.stop()
       if calon or caloff:
          relay.close()
+      if recording_temperature:
+         nano.close()

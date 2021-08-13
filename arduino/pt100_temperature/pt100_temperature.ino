@@ -1,7 +1,4 @@
-
-
 #include <Wire.h>
-
 #include <SPI.h>
 
 /*************************************************** 
@@ -38,10 +35,12 @@ Adafruit_MAX31865 max = Adafruit_MAX31865(10, 11, 12, 13);
 // init the Pt100 table lookup module
 pt100rtd PT100 = pt100rtd() ;
 
+char bufr[2];
+
 void setup()
 {
 	Serial.begin(57600) ;
-	Serial.println("MAX31865 PT100 Sensor Test using NIST resistance table.");
+	//Serial.println("MAX31865 PT100 Sensor Test using NIST resistance table.");
 
 	//max.begin(MAX31865_2WIRE);  // set to 2WIRE or 4WIRE as necessary
 	max.begin(MAX31865_3WIRE);  // set to 2WIRE or 4WIRE as necessary
@@ -105,8 +104,8 @@ void loop()
 	// or use exact ohms floating point value.
 	ohms = (float)(ohmsx100 / 100) + ((float)(ohmsx100 % 100) / 100.0) ;
 
-	Serial.print("rtd: 0x") ; Serial.print(rtd,HEX) ;
-	Serial.print(", ohms: ") ; Serial.println(ohms,2) ;
+	//Serial.print("rtd: 0x") ; Serial.print(rtd,HEX) ;
+	//Serial.print(", ohms: ") ; Serial.println(ohms,2) ;
  
   // compare lookup table and common computational methods
   
@@ -115,17 +114,18 @@ void loop()
 	//Tcube	= PT100.celsius_cubic(ohms) ;		  	// Cubic eqn calc
 	//Tpoly	= PT100.celsius_polynomial(ohms) ;      	// 5th order polynomial
 	//Trpoly	= PT100.celsius_rationalpolynomial(ohms) ;	// ugly rational polynomial quotient
-	
+
+  
 	// report temperatures at 0.001C resolution to highlight methodological differences
-	Serial.print("Tlut   = ") ; Serial.print(Tlut  ,3) ; Serial.println(" C (exact)") ;
-	//Serial.print("Tcvd   = ") ; Serial.print(Tcvd  ,3) ; Serial.println(" C") ;
-	//Serial.print("Tcube  = ") ; Serial.print(Tcube ,3) ; Serial.println(" C") ;
-	//Serial.print("Tpoly  = ") ; Serial.print(Tpoly ,3) ; Serial.println(" C") ;
-	//Serial.print("Trpoly = ") ; Serial.print(Trpoly,3) ; Serial.println(" C") ;
-  	Serial.println();
+	//Serial.print("Tlut   = ") ; Serial.print(Tlut  ,3) ; Serial.println(" C (exact)") ;
+
+  if (Serial.available()>0) {
+    Serial.readBytes(bufr,1);
+    Serial.println(Tlut  ,3);
+  }
   
 	checkFault() ;
 
-	delay(5000) ;
+	delay(100) ;
 
 }
