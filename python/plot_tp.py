@@ -9,11 +9,11 @@ Created on Fri Jul  9 07:21:39 2021
 
 TODO:
 
-Working on temperature compensation.  Font is too large when plotting
-temperature.
-FIXED
+Working on temperature compensation.Temperature plot looking nice, need to 
+calculate temperature response
 
-Temperature plot looking nice, need to calculate temperature response
+Font is too large when plotting temperature.
+FIXED
 
 Need a straight line fit for baseline correction    
 
@@ -31,9 +31,6 @@ UNABLE TO REPRODUCE AGAIN
 import sys
 import pandas as pd
 import numpy as np
-# my pandas dun tole me, to do da next line, baby yeahhh...
-#from pandas.plotting import register_matplotlib_converters
-#import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 import argparse
@@ -99,7 +96,6 @@ else:
 # Load the file
 try:
     # Read column 1 NOT as dates
-    #df = pd.read_csv(file_name,header=None, parse_dates=[1])
     df = pd.read_csv(file_name,header=None)
 except FileNotFoundError:
     print('Please specify a valid path filename with --filename.')
@@ -181,10 +177,12 @@ if use_lowpass:
 # mapped to a plot 
 if endoff == 0:
     tp_array_window = tp_array[startoff:]
-    time_array_window = time_array[startoff:] 
+    time_array_window = time_array[startoff:]
+    # Add temperature_array_window
 else:
     tp_array_window = tp_array[startoff:-endoff]
     time_array_window = time_array[startoff:-endoff]
+    # Add temperature_array_window
 
 # By setting ax as a subplot, the x and y values are now displayed
 # when running from the shell
@@ -197,7 +195,8 @@ else:
     ax = fig.add_subplot(1, 1, 1)
     
 ax.set_title(f"Total Power Plot, {file_name}", fontsize = 10)
-ax.xaxis.set_major_formatter(mdates.DateFormatter("%H-%M"))
+# This formats the x-axis to hours and minutes only
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
 # It actually makes a difference which axis gets plotted first
 # Plotting the raw axis then the processed axis makes the graph 
 # a lot more readable
@@ -215,6 +214,10 @@ if calibrating and cal_off_transition != -1  and cal_off_position <= (len(df) - 
 
 if plot_temperature:
     ax2.set_title("Ambient Temperaturee, degrees C", fontsize=10)
+    # This formats the x-axis to hours and minutes only
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    # This will break when any offsets are defined - need to define
+    # temperature_array_window the same way that other windows are defined
     ax2.plot(time_array_window, temperature_array)
 
 # No wasted space
