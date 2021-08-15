@@ -27,7 +27,7 @@ import utils as u
 file_name = 'tp_20210813_temp.csv'
 startoff = 1250
 endoff = 0
-use_smoothing = True
+use_smoothing = False
 smooth_winsize = 50
 
 
@@ -54,6 +54,7 @@ temperature_array = df[4].to_numpy()
 # smooth filtering was chosen
 if use_smoothing:
     tp_array = u.smooth(tp_array, window_len=smooth_winsize)
+    #temperature_array = u.smooth(temperature_array, window_len=smooth_winsize)
 
 
 # I need to get the columns of the dataframe into a series, then convert to
@@ -74,19 +75,23 @@ else:
 
 # Need to rearrange arrays in ascending temperature
 # Sort both arrays
-#array_one_sorted = np.sort(array_one)
-#array_two_sorted = array_two.ravel()[array_one.argsort(axis=None).reshape(array_one.shape)]
 temperature_array_sorted = np.sort(temperature_array_window)
 tp_array_sorted = tp_array_window.ravel()[temperature_array_window.argsort(axis=None).reshape(temperature_array_window.shape)]
 
+# Use unique temperature values only
+temperature_array_uniq, indices_uniq = np.unique(temperature_array_sorted, return_index=True)
+# These are the total power values correspponding to the unique temperatures
+tp_array_uniq = tp_array_sorted[indices_uniq]
+
 # calculate polynomial equation
-z = np.polyfit(temperature_array_sorted, tp_array_sorted, 3)
+z = np.polyfit(temperature_array_uniq, tp_array_uniq, 3)
 f = np.poly1d(z)
 
 # calculate new x's and y's
-#temperature_fit = np.linspace(tp_array_sorted[0], tp_array_sorted[-1], 50)
-#tp_fit = f(temperature_fit)
-tp_fit = f(temperature_array_sorted)
+tp_fit = f(temperature_array_uniq)
+
+# Perform temperature compensation here
+
 
 # Plot total power and temperature vs. time
 fig1, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(10,5), \
@@ -112,8 +117,8 @@ ax2.plot(time_array_window, temperature_array_window)
 # Plot total power vs. temperature, with fitted poly
 fig2 = plt.figure(figsize=(10,5))
 ax3=fig2.add_axes([0,0,1,1],title = f"Reference Signal Processing, {file_name}")
-ax3.plot(temperature_array_sorted,tp_array_sorted,label='Tpower', color='black')
-ax3.plot(temperature_array_sorted,tp_fit,label='f(temp)', color='red')
+ax3.plot(temperature_array_uniq,tp_array_uniq,label='Tpower', color='black')
+ax3.plot(temperature_array_uniq,tp_fit,label='f(temp)', color='red')
 
 # No wasted space
 fig1.tight_layout()
