@@ -178,11 +178,11 @@ if use_lowpass:
 if endoff == 0:
     tp_array_window = tp_array[startoff:]
     time_array_window = time_array[startoff:]
-    # Add temperature_array_window
+    temperature_array_window = temperature_array[startoff:]
 else:
     tp_array_window = tp_array[startoff:-endoff]
     time_array_window = time_array[startoff:-endoff]
-    # Add temperature_array_window
+    temperature_array_window = temperature_array[startoff:-endoff]
 
 # By setting ax as a subplot, the x and y values are now displayed
 # when running from the shell
@@ -231,7 +231,12 @@ print(f'Number of points in window: {len(df) - startoff - endoff}')
 print(f'Array size: {tp_array.size}')
 print(f'Start offset: {startoff}')
 print(f'End offset: {endoff}')
-print(f'Window minimum: {np.amin(tp_array_window)}')
-print(f'Window maximum: {np.amax(tp_array_window)}')
-print(f'Window average: {np.mean(tp_array_window)}')
-print(f'Window stddev: {np.std(tp_array_window)}')
+print(f'Total Power window minimum: {np.amin(tp_array_window)}')
+print(f'Total Power window maximum: {np.amax(tp_array_window)}')
+print(f'Total Power window average: {np.mean(tp_array_window)}')
+print(f'Total Power window stddev: {np.std(tp_array_window)}')
+if plot_temperature:
+    print(f'Temperature window minimum: {np.amin(temperature_array_window)}')
+    print(f'Temperature window maximum: {np.amax(temperature_array_window)}')
+    print(f'Temperature window average: {np.mean(temperature_array_window)}')
+    print(f'Temperature window stddev: {np.std(temperature_array_window)}')

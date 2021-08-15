@@ -24,12 +24,11 @@ import matplotlib.dates as mdates
 import utils as u
 
 # We're not parsing here yet, so just set some hardcoded values
-file_name = 'tp_20210813_temp.csv'
-startoff = 1250
-endoff = 0
+file_name = 'tp_20210815_143437_10800.csv'
+startoff = 4536
+endoff = 10800 - 6183
 use_smoothing = False
 smooth_winsize = 50
-
 
 # Load the file
 try:
@@ -71,8 +70,6 @@ else:
     time_array_window = time_array[startoff:-endoff]
     temperature_array_window = temperature_array[startoff:-endoff]
     
-
-
 # Need to rearrange arrays in ascending temperature
 # Sort both arrays
 temperature_array_sorted = np.sort(temperature_array_window)
@@ -87,11 +84,14 @@ tp_array_uniq = tp_array_sorted[indices_uniq]
 z = np.polyfit(temperature_array_uniq, tp_array_uniq, 3)
 f = np.poly1d(z)
 
-# calculate new x's and y's
+# Create the curve fit array
 tp_fit = f(temperature_array_uniq)
 
-# Perform temperature compensation here
-
+# Subtract curve fit value from total power array
+tp_array_tcomp = np.empty(tp_array.size, dtype = float)
+for idx, v in enumerate(tp_array):
+    tp_array_tcomp[idx] = tp_array[idx] - f(temperature_array[idx])
+# ******************** PLOTTING *****************************
 
 # Plot total power and temperature vs. time
 fig1, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(10,5), \
@@ -104,8 +104,8 @@ ax1.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
 # Plotting the raw axis then the processed axis makes the graph 
 # a lot more readable
 
-ax1.plot(time_array_window, tp_array_window,label='ax1', color='black')
-ax1.legend(loc=(0.05,0.8)) # use a location code
+ax1.plot(time_array_window, tp_array_window, color='black')
+#ax1.legend(loc=(0.05,0.8)) # use a location code
 
 ax2.set_title("Ambient Temperaturee, degrees C", fontsize=10)
 # This formats the x-axis to hours and minutes only
@@ -116,9 +116,22 @@ ax2.plot(time_array_window, temperature_array_window)
 
 # Plot total power vs. temperature, with fitted poly
 fig2 = plt.figure(figsize=(10,5))
-ax3=fig2.add_axes([0,0,1,1],title = f"Reference Signal Processing, {file_name}")
+ax3=fig2.add_axes([0,0,1,1],title = f"Total Power vs. Temperature, {file_name}")
+#ax3.legend(loc=(0.05,0.8)) # use a location code
 ax3.plot(temperature_array_uniq,tp_array_uniq,label='Tpower', color='black')
 ax3.plot(temperature_array_uniq,tp_fit,label='f(temp)', color='red')
+
+# Plot final temperature compensated to array
+fig3, (ax4, ax5) = plt.subplots(2, sharex=True, figsize=(10,5), \
+                                  gridspec_kw={'height_ratios': [1,1]})
+
+ax4.set_title("Total Power Plot, Raw", fontsize = 10)
+ax4.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+ax4.plot(time_array, tp_array,label='ax1', color='black')
+ax4.legend(loc=(0.05,0.8)) # use a location code
+ax5.set_title("Total Power Plot, Temperature Compensated ", fontsize=10)
+ax5.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+ax5.plot(time_array, tp_array_tcomp)
 
 # No wasted space
 fig1.tight_layout()
