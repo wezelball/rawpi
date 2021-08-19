@@ -23,6 +23,16 @@ import matplotlib.dates as mdates
 # My utilities
 import utils as u
 
+
+# Adds the values and returns the total
+def sum_list(numbers):
+    total = 0
+    for number in numbers:
+        total += number
+    
+    return total
+
+
 # We're not parsing here yet, so just set some hardcoded values
 file_name = 'tp_20210815_143437_10800.csv'
 startoff = 4536
@@ -77,8 +87,58 @@ tp_array_sorted = tp_array_window.ravel()[temperature_array_window.argsort(axis=
 
 # Use unique temperature values only
 temperature_array_uniq, indices_uniq = np.unique(temperature_array_sorted, return_index=True)
+
+# New temperature compensation code
+# ************************************************************************
+# Iterate through the temperature_array_uniq array
+    # 1. For each element, iterate through the temperature_array_sorted array
+        # 1.1 If values are equal for the first time:
+            # 1.1.1 delete the tp_list_accum list (under a try clause)
+            # 1.1.2 create tp_list_accum as an empty list
+        # 1.2 if values are equal for the 2nd or greater time
+            # 1.2.1 append the corresponding tp value to list
+        # 1.3 if values were equal but are now not equal
+            # 1.3.1 sum all elements in list
+            # 1.3.2 divide by the length of the list
+            # 1,3,3 store value in tp_array_uniq_new (will replace tp_array_uniq)
+
+
+# Create lists to store the calculated unique values and the accumulated
+tp_list_uniq = []
+tp_list_accum = []
+
+# Iterate elementwise unique temperature array
+for idx_u, temp_u in enumerate(temperature_array_uniq):
+    # Iterate elementwise through sorted temperature array
+    for idx_s, temp_s in enumerate(temperature_array_sorted):
+        # If the sorted and unique temps are equal, append corresponding
+        # tp value to the accumulator list
+        # Set group match to true to indicate we are inside a grouo of 
+        # equal temperatures
+        if temp_s == temp_u:
+            temperature_group_match = True
+            tp_list_accum.append(tp_array_sorted[idx_s])
+        # Just started a new group of temperatures, or are at lase element of
+        # temperature_array_uniq
+        if (temp_s != temp_u and temperature_group_match) or (temp_s == temp_u and idx_u == len(temperature_array_uniq)-1):
+            temperature_group_match = False
+            tp_list_uniq.append(sum_list(tp_list_accum)/len(tp_list_accum))
+            # clear the list
+            tp_list_accum[:] = []
+
+ 
+# WHEW!
+# Now convert tp_list_uniq into tp_array_uniq
+# If using this statement, comment out the one below
+tp_array_uniq = np.array(tp_list_uniq, float)
+
+# ************************************************************************
+
 # These are the total power values correspponding to the unique temperatures
-tp_array_uniq = tp_array_sorted[indices_uniq]
+# This will be replaced with averaged tp array defined in new comp code above
+# Comment below out when testing new averaged tp_array_uniq
+# Comment out the one above when using this statement
+#tp_array_uniq = tp_array_sorted[indices_uniq]
 
 # calculate polynomial equation
 z = np.polyfit(temperature_array_uniq, tp_array_uniq, 3)
@@ -90,9 +150,12 @@ tp_fit = f(temperature_array_uniq)
 # Subtract curve fit value from total power array
 tp_array_tcomp = np.empty(tp_array.size, dtype = float)
 for idx, v in enumerate(tp_array):
+    # I tried division instead of subtraction - the shape of the 
+    # curve was almost identical, just the scale was different
     tp_array_tcomp[idx] = tp_array[idx] - f(temperature_array[idx])
-# ******************** PLOTTING *****************************
+    #tp_array_tcomp[idx] = tp_array[idx] / f(temperature_array[idx])
 
+# ******************** PLOTTING *****************************
 # Plot total power and temperature vs. time
 fig1, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(10,5), \
                                   gridspec_kw={'height_ratios': [3,1]})
