@@ -34,9 +34,13 @@ def sum_list(numbers):
 
 
 # We're not parsing here yet, so just set some hardcoded values
-file_name = 'tp_20210815_143437_10800.csv'
-startoff = 4536
-endoff = 10800 - 6183
+# Need limits checking for startoff and endoff
+#file_name = 'tp_20210815_143437_10800.csv'
+file_name = 'tp_20210814_114806_7200sec.csv'
+startoff = 1300
+#startoff = 4536
+endoff = 0
+#endoff = 10800 - 6183
 use_smoothing = False
 smooth_winsize = 50
 
@@ -63,6 +67,7 @@ temperature_array = df[4].to_numpy()
 # smooth filtering was chosen
 if use_smoothing:
     tp_array = u.smooth(tp_array, window_len=smooth_winsize)
+    # do I smooth temperature too? So far, it causes weird results
     #temperature_array = u.smooth(temperature_array, window_len=smooth_winsize)
 
 
@@ -111,20 +116,27 @@ tp_list_accum = []
 for idx_u, temp_u in enumerate(temperature_array_uniq):
     # Iterate elementwise through sorted temperature array
     for idx_s, temp_s in enumerate(temperature_array_sorted):
+        temps_equal = (temp_s == temp_u)
         # If the sorted and unique temps are equal, append corresponding
         # tp value to the accumulator list
         # Set group match to true to indicate we are inside a grouo of 
         # equal temperatures
-        if temp_s == temp_u:
-            temperature_group_match = True
+        if temps_equal:
+            temp_group_match = True
             tp_list_accum.append(tp_array_sorted[idx_s])
         # Just started a new group of temperatures, or are at lase element of
-        # temperature_array_uniq
-        if (temp_s != temp_u and temperature_group_match) or (temp_s == temp_u and idx_u == len(temperature_array_uniq)-1):
-            temperature_group_match = False
+        # This if block is executed when the loop is just past the last element
+        # of a temperature group or the end of the temperature_array_uniq array,
+        # whichever comes first
+        # TODO:
+            # I may be throwing away the first temperature of the next
+            # group here
+        if (temp_group_match == True) and (not temps_equal or (temps_equal and idx_u == len(temperature_array_uniq)-1)):
+            temp_group_match = False
             tp_list_uniq.append(sum_list(tp_list_accum)/len(tp_list_accum))
             # clear the list
             tp_list_accum[:] = []
+            break
 
  
 # WHEW!
@@ -152,8 +164,8 @@ tp_array_tcomp = np.empty(tp_array.size, dtype = float)
 for idx, v in enumerate(tp_array):
     # I tried division instead of subtraction - the shape of the 
     # curve was almost identical, just the scale was different
-    tp_array_tcomp[idx] = tp_array[idx] - f(temperature_array[idx])
-    #tp_array_tcomp[idx] = tp_array[idx] / f(temperature_array[idx])
+    #tp_array_tcomp[idx] = tp_array[idx] - f(temperature_array[idx])
+    tp_array_tcomp[idx] = tp_array[idx] / f(temperature_array[idx])
 
 # ******************** PLOTTING *****************************
 # Plot total power and temperature vs. time
