@@ -137,3 +137,4 @@ ax.legend(loc=(0.05,0.8)) # use a location code
 
 # Plot a vertical line at the specified rest frequency
 plt.axvline(x=1420405751.768)
+plt.show()
