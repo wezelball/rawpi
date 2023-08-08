@@ -131,7 +131,9 @@ freq_array = np.linspace(start_freq, end_freq, num = num_steps, endpoint=True)
 # Plot the baseline with the array
 
 fig = plt.figure(figsize=(10,5))
-ax=fig.add_axes([0,0,1,1],title = f"Reference Signal Processing, {file_name}")
+ax=fig.add_axes([0.1,0.1,0.8,0.8],title = f"Reference Signal Processing, {file_name}")
+ax.set_xlabel('Frequency')
+ax.set_ylabel('Flux')
 ax.plot(freq_array,sky_row_array,label=axis_label, color='black')
 ax.legend(loc=(0.05,0.8)) # use a location code
 
